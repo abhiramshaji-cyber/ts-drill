@@ -6,7 +6,9 @@ A TypeScript practice pad with a real IDE inside it. Twelve things to build from
 
 Reaching for AI on every line erodes the muscle memory. This is a place to write TypeScript by hand and get honest feedback in milliseconds.
 
-Every task gives you a spec and an almost empty file. You write the whole thing: `chunk`, `groupBy`, `memoize`, `retry`, an LRU cache, a typed event emitter, a small validator. Nothing is a fill in the blank, and nothing asks you to patch someone else's code.
+Every task gives you a spec and a completely empty editor. You write the whole thing, types included: `chunk`, `groupBy`, `attempt`, a counter reducer, `sortBy`, a recursive document renderer, a query string parser, `memoize`, `retry`, an LRU cache, a typed event emitter, a small validator. Nothing is a fill in the blank, and nothing asks you to patch someone else's code.
+
+Hints carry example syntax, not just prose, so a half remembered signature is not what stops you.
 
 ## How it works
 
@@ -19,7 +21,7 @@ An answer counts as correct when both gates pass:
 
 Assertions execute in a disposable web worker with a hard 2 second timeout, so an accidental infinite loop is terminated rather than freezing the tab.
 
-Where the shape of the type is part of the exercise, the starter carries `Expect<Equal<...>>` lines that stay red until your signature is right. A working implementation with a lazy signature does not count as done.
+There is a third, hidden gate. Each task carries `Expect<Equal<...>>` contract lines that never appear in your editor. At Run they are appended to your code in a scratch model and type checked, so an implementation that behaves perfectly while typed with `any` is refused under **Signature**. The editor stays empty; the contract is still enforced.
 
 ## Hints
 

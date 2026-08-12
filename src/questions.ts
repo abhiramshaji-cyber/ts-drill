@@ -1,10 +1,13 @@
+export type Hint = { text: string; code: string }
+
 export type Question = {
   id: string
   title: string
   prompt: string
   starter: string
   solution: string
-  hints: string[]
+  hints: Hint[]
+  typeChecks: string
   assertions: string
 }
 
@@ -13,28 +16,40 @@ export const QUESTIONS: Question[] = [
     id: 'chunk',
     title: 'Split an array into chunks',
     prompt:
-      'Build chunk(items, size): split items into groups of at most size, in order. The last group can be short. Keep it generic so a string[] gives back a string[][].',
+      'Build chunk(items, size): split items into groups of at most size, in order. The last group can be short. It has to be generic, so chunking a string[] gives back a string[][].',
     hints: [
-      'Walk the array in steps of size and take a slice at each step.',
-      'items.slice(index, index + size) handles the short last group on its own, because slice stops at the end.',
-      'Declare it as function chunk<T>(items: T[], size: number): T[][] and collect each slice into an array.',
+      {
+        text: 'Walk the array in steps of size and take a slice at each step.',
+        code: `for (let index = 0; index < items.length; index += size) {
+
+}`,
+      },
+      {
+        text: 'slice stops at the end of the array, so the short last group needs no special case. On a three item array, slice(2, 4) gives just the third item.',
+        code: `[1, 2, 3].slice(2, 4)`,
+      },
+      {
+        text: 'Declare it generic so the element type survives the call.',
+        code: `function chunk<T>(items: T[], size: number): T[][] {
+  const groups: T[][] = []
+
+  return groups
+}`,
+      },
     ],
-    starter: `const letters = ['a', 'b', 'c', 'd', 'e']
-
-type ChunkKeepsElementType = Expect<Equal<ReturnType<typeof chunk<number>>, number[][]>>`,
-    solution: `const letters = ['a', 'b', 'c', 'd', 'e']
-
-function chunk<T>(items: T[], size: number): T[][] {
+    starter: '',
+    solution: `function chunk<T>(items: T[], size: number): T[][] {
   const groups: T[][] = []
   for (let index = 0; index < items.length; index += size) {
     groups.push(items.slice(index, index + size))
   }
   return groups
-}
-
-type ChunkKeepsElementType = Expect<Equal<ReturnType<typeof chunk<number>>, number[][]>>`,
+}`,
+    typeChecks: `type ChunkKeepsElementType = Expect<Equal<ReturnType<typeof chunk<number>>, number[][]>>`,
     assertions: `test('splits evenly', () => expect(chunk([1, 2, 3, 4], 2)).toEqual([[1, 2], [3, 4]]))
-test('last group can be short', () => expect(chunk(letters, 2)).toEqual([['a', 'b'], ['c', 'd'], ['e']]))
+test('last group can be short', () => {
+  expect(chunk(['a', 'b', 'c', 'd', 'e'], 2)).toEqual([['a', 'b'], ['c', 'd'], ['e']])
+})
 test('empty input gives no groups', () => expect(chunk([], 3)).toEqual([]))
 test('size bigger than the array', () => expect(chunk([1, 2], 5)).toEqual([[1, 2]]))
 test('size of one', () => expect(chunk([1, 2], 1)).toEqual([[1], [2]]))`,
@@ -43,27 +58,30 @@ test('size of one', () => expect(chunk([1, 2], 1)).toEqual([[1], [2]]))`,
     id: 'group-by',
     title: 'Group records by a key',
     prompt:
-      'Build groupBy(items, key): return an object mapping each distinct value of that key to the array of items carrying it, in input order. Only real keys of the item should be accepted.',
+      'Build groupBy(items, key): return an object mapping each distinct value of that key to the array of items carrying it, in input order. Only a real key of the item type may be passed, and the buckets must hold the item type rather than any.',
     hints: [
-      'Start with an empty object, walk the items once, and drop each one into the bucket named by its key value.',
-      'Object keys are strings, so convert the value with String() before using it as a bucket name.',
-      'Type it as <T, K extends keyof T>(items: T[], key: K): Record<string, T[]>, creating the bucket array the first time you meet a value.',
+      {
+        text: 'Start with an empty record and walk the items once, dropping each into the bucket named by its key value.',
+        code: `const groups: Record<string, T[]> = {}
+for (const item of items) {
+
+}`,
+      },
+      {
+        text: 'Bucket names are strings, and the array has to be created the first time you meet a value.',
+        code: `const bucket = String(item[key])
+if (!groups[bucket]) groups[bucket] = []`,
+      },
+      {
+        text: 'Constrain the key parameter to the item type’s own keys so a typo is a compile error.',
+        code: `function groupBy<T, K extends keyof T>(
+  items: T[],
+  key: K,
+): Record<string, T[]> {}`,
+      },
     ],
-    starter: `const people = [
-  { name: 'ada', team: 'core' },
-  { name: 'linus', team: 'kernel' },
-  { name: 'grace', team: 'core' },
-]
-
-type Person = { name: string; team: string }
-type GroupByReturnsBuckets = Expect<Equal<ReturnType<typeof groupBy<Person, 'team'>>, Record<string, Person[]>>>`,
-    solution: `const people = [
-  { name: 'ada', team: 'core' },
-  { name: 'linus', team: 'kernel' },
-  { name: 'grace', team: 'core' },
-]
-
-function groupBy<T, K extends keyof T>(items: T[], key: K): Record<string, T[]> {
+    starter: '',
+    solution: `function groupBy<T, K extends keyof T>(items: T[], key: K): Record<string, T[]> {
   const groups: Record<string, T[]> = {}
   for (const item of items) {
     const bucket = String(item[key])
@@ -71,11 +89,15 @@ function groupBy<T, K extends keyof T>(items: T[], key: K): Record<string, T[]> 
     groups[bucket].push(item)
   }
   return groups
-}
-
-type Person = { name: string; team: string }
+}`,
+    typeChecks: `type Person = { name: string; team: string }
 type GroupByReturnsBuckets = Expect<Equal<ReturnType<typeof groupBy<Person, 'team'>>, Record<string, Person[]>>>`,
-    assertions: `test('groups by the key', () => {
+    assertions: `const people = [
+  { name: 'ada', team: 'core' },
+  { name: 'linus', team: 'kernel' },
+  { name: 'grace', team: 'core' },
+]
+test('groups by the key', () => {
   expect(groupBy(people, 'team')).toEqual({
     core: [{ name: 'ada', team: 'core' }, { name: 'grace', team: 'core' }],
     kernel: [{ name: 'linus', team: 'kernel' }],
@@ -93,15 +115,28 @@ test('groups by a different key', () => {
     id: 'attempt',
     title: 'Wrap a risky call in a result',
     prompt:
-      'Build attempt(fn): run fn and return { ok: true, value } with whatever it returned, or { ok: false, error } holding an Error if it threw. attempt itself must never throw.',
+      'Define Result<T> as { ok: true; value: T } | { ok: false; error: Error }. Then build attempt(fn): run fn and return the ok branch with whatever it returned, or the failure branch holding an Error if it threw. attempt itself must never throw.',
     hints: [
-      'There are exactly two exits: the value came back, or something was thrown. try/catch gives you both.',
-      'catch hands you unknown, not Error, so you cannot assume it has a .message.',
-      'Check error instanceof Error, and wrap anything else with new Error(String(error)).',
-    ],
-    starter: `type Result<T> = { ok: true; value: T } | { ok: false; error: Error }
+      {
+        text: 'There are exactly two exits: the value came back, or something was thrown.',
+        code: `try {
 
-type AttemptReturnsResult = Expect<Equal<ReturnType<typeof attempt<number>>, Result<number>>>`,
+} catch (error) {
+
+}`,
+      },
+      {
+        text: 'catch hands you unknown, not Error, so you cannot read .message off it until you check.',
+        code: `error instanceof Error ? error : new Error(String(error))`,
+      },
+      {
+        text: 'The return type is the union of the two branches, generic in whatever fn returns.',
+        code: `type Result<T> = { ok: true; value: T } | { ok: false; error: Error }
+
+function attempt<T>(fn: () => T): Result<T> {}`,
+      },
+    ],
+    starter: '',
     solution: `type Result<T> = { ok: true; value: T } | { ok: false; error: Error }
 
 function attempt<T>(fn: () => T): Result<T> {
@@ -110,9 +145,8 @@ function attempt<T>(fn: () => T): Result<T> {
   } catch (error) {
     return { ok: false, error: error instanceof Error ? error : new Error(String(error)) }
   }
-}
-
-type AttemptReturnsResult = Expect<Equal<ReturnType<typeof attempt<number>>, Result<number>>>`,
+}`,
+    typeChecks: `type AttemptReturnsResult = Expect<Equal<ReturnType<typeof attempt<number>>, Result<number>>>`,
     assertions: `test('wraps a returned value', () => expect(attempt(() => 41 + 1)).toEqual({ ok: true, value: 42 }))
 test('catches a thrown error', () => {
   const result = attempt(() => {
@@ -134,16 +168,28 @@ test('keeps a falsy value as a success', () => expect(attempt(() => 0)).toEqual(
     id: 'reducer',
     title: 'Build a counter reducer',
     prompt:
-      'Build reduceCounter(state, action) for the Action list. add adds its amount, reset returns 0, clamp keeps state between min and max. Add a default branch that makes a forgotten action type a compile error.',
+      "Define Action as a union of { type: 'add'; amount: number }, { type: 'reset' }, and { type: 'clamp'; min: number; max: number }. Then build reduceCounter(state: number, action: Action): number. add adds its amount, reset returns 0, clamp keeps state between min and max. End with a default branch that makes a forgotten action type a compile error.",
     hints: [
-      'Switch on action.type. Inside each case you can read that action’s own fields.',
-      'clamp is Math.min and Math.max together: never below min, never above max.',
-      'In the default branch assign action to a variable typed never, so adding a new action type stops compiling until you handle it.',
+      {
+        text: 'Switch on the tag field. Inside a case, that variant’s own fields become readable.',
+        code: `switch (action.type) {
+  case 'add':
+    return state + action.amount
+}`,
+      },
+      {
+        text: 'clamp is Math.min and Math.max together: never below min, never above max.',
+        code: `Math.min(Math.max(state, action.min), action.max)`,
+      },
+      {
+        text: 'Assigning the leftover action to a never variable is what turns a forgotten case into a compile error.',
+        code: `default: {
+  const unreachable: never = action
+  return unreachable
+}`,
+      },
     ],
-    starter: `type Action =
-  | { type: 'add'; amount: number }
-  | { type: 'reset' }
-  | { type: 'clamp'; min: number; max: number }`,
+    starter: '',
     solution: `type Action =
   | { type: 'add'; amount: number }
   | { type: 'reset' }
@@ -163,6 +209,8 @@ function reduceCounter(state: number, action: Action): number {
     }
   }
 }`,
+    typeChecks: `type ReducerTakesStateAndAction = Expect<Equal<Parameters<typeof reduceCounter>, [number, Action]>>
+type ReducerReturnsNumber = Expect<Equal<ReturnType<typeof reduceCounter>, number>>`,
     assertions: `test('adds', () => expect(reduceCounter(5, { type: 'add', amount: 3 })).toBe(8))
 test('adds a negative amount', () => expect(reduceCounter(5, { type: 'add', amount: -9 })).toBe(-4))
 test('resets to zero', () => expect(reduceCounter(99, { type: 'reset' })).toBe(0))
@@ -174,26 +222,29 @@ test('leaves a value inside the range alone', () => expect(reduceCounter(5, { ty
     id: 'sort-by',
     title: 'Sort by several keys',
     prompt:
-      'Build sortBy(items, ...keys): return a new array sorted by the first key, breaking ties with the next, and so on. The original array must not change.',
+      'Build sortBy(items, ...keys): return a new array sorted by the first key, breaking ties with the next, and so on. The original array must not change, and only real keys of the item type may be passed.',
     hints: [
-      'Copy the array before sorting, because sort rearranges the array you call it on.',
-      'The comparator walks the keys in order and returns as soon as two values differ.',
-      'Compare with < and > returning -1 or 1, fall through to 0 when every key ties, and type the rest parameter as (keyof T)[].',
-    ],
-    starter: `const players = [
-  { name: 'ada', score: 10, age: 36 },
-  { name: 'linus', score: 10, age: 54 },
-  { name: 'grace', score: 20, age: 45 },
-  { name: 'bob', score: 10, age: 20 },
-]`,
-    solution: `const players = [
-  { name: 'ada', score: 10, age: 36 },
-  { name: 'linus', score: 10, age: 54 },
-  { name: 'grace', score: 20, age: 45 },
-  { name: 'bob', score: 10, age: 20 },
-]
+      {
+        text: 'Copy first, because sort rearranges the array you call it on rather than returning a new one.',
+        code: `return [...items].sort((left, right) => {
 
-function sortBy<T>(items: T[], ...keys: (keyof T)[]): T[] {
+})`,
+      },
+      {
+        text: 'The comparator walks the keys in order and returns as soon as two values differ, falling through to 0 when everything ties.',
+        code: `for (const key of keys) {
+  if (left[key] < right[key]) return -1
+  if (left[key] > right[key]) return 1
+}
+return 0`,
+      },
+      {
+        text: 'The trailing keys are a rest parameter, typed as an array of the item type’s keys.',
+        code: `function sortBy<T>(items: T[], ...keys: (keyof T)[]): T[] {}`,
+      },
+    ],
+    starter: '',
+    solution: `function sortBy<T>(items: T[], ...keys: (keyof T)[]): T[] {
   return [...items].sort((left, right) => {
     for (const key of keys) {
       if (left[key] < right[key]) return -1
@@ -202,7 +253,15 @@ function sortBy<T>(items: T[], ...keys: (keyof T)[]): T[] {
     return 0
   })
 }`,
-    assertions: `test('sorts by one key', () => {
+    typeChecks: `type Row = { a: number; b: string }
+type SortByReturnsANewList = Expect<Equal<ReturnType<typeof sortBy<Row>>, Row[]>>`,
+    assertions: `const players = [
+  { name: 'ada', score: 10, age: 36 },
+  { name: 'linus', score: 10, age: 54 },
+  { name: 'grace', score: 20, age: 45 },
+  { name: 'bob', score: 10, age: 20 },
+]
+test('sorts by one key', () => {
   expect(sortBy(players, 'score').map((player) => player.name)).toEqual(['ada', 'linus', 'bob', 'grace'])
 })
 test('breaks ties with the second key', () => {
@@ -222,16 +281,24 @@ test('empty input', () => expect(sortBy([], 'name')).toEqual([]))`,
     id: 'render-tree',
     title: 'Render a nested document',
     prompt:
-      'Build render(node): turn a DocNode tree into a string. text gives its value, bold wraps its child in *stars*, list joins its children with a comma and space and wraps them in [brackets].',
+      "Define DocNode as a union of { kind: 'text'; value: string }, { kind: 'bold'; child: DocNode }, and { kind: 'list'; children: DocNode[] }. Then build render(node: DocNode): string. text gives its value, bold wraps its child in *stars*, list joins its children with a comma and a space inside [brackets].",
     hints: [
-      'Switch on node.kind. Two of the three cases hold more nodes, so render ends up calling itself.',
-      'bold holds a single child node, list holds an array of them.',
-      'For list, map every child through render and join with ", " before wrapping the result in brackets.',
-    ],
-    starter: `type DocNode =
+      {
+        text: 'The type refers to itself, which is allowed and is what makes the tree possible.',
+        code: `type DocNode =
   | { kind: 'text'; value: string }
-  | { kind: 'bold'; child: DocNode }
-  | { kind: 'list'; children: DocNode[] }`,
+  | { kind: 'bold'; child: DocNode }`,
+      },
+      {
+        text: 'Switch on kind, and call render again wherever a nested node appears.',
+        code: 'return `*${render(node.child)}*`',
+      },
+      {
+        text: 'list holds an array, so map every child through render before joining.',
+        code: `node.children.map(render).join(', ')`,
+      },
+    ],
+    starter: '',
     solution: `type DocNode =
   | { kind: 'text'; value: string }
   | { kind: 'bold'; child: DocNode }
@@ -247,6 +314,8 @@ function render(node: DocNode): string {
       return \`[\${node.children.map(render).join(', ')}]\`
   }
 }`,
+    typeChecks: `type RenderTakesADocNode = Expect<Equal<Parameters<typeof render>, [DocNode]>>
+type RenderReturnsString = Expect<Equal<ReturnType<typeof render>, string>>`,
     assertions: `test('plain text', () => expect(render({ kind: 'text', value: 'hi' })).toBe('hi'))
 test('bold wraps its child', () => {
   expect(render({ kind: 'bold', child: { kind: 'text', value: 'hi' } })).toBe('*hi*')
@@ -271,15 +340,30 @@ test('empty list', () => expect(render({ kind: 'list', children: [] })).toBe('[]
     id: 'parse-query',
     title: 'Parse a query string',
     prompt:
-      'Build parseQuery(input): turn "a=1&b=2" into { a: "1", b: "2" }. A leading ? is optional, a key with no = gets an empty string, a repeated key collects into an array, and an empty input gives {}.',
+      'Build parseQuery(input: string): turn "a=1&b=2" into { a: "1", b: "2" }. A leading ? is optional, a key with no = gets an empty string, a repeated key collects into an array, and an empty input gives {}. Values stay strings.',
     hints: [
-      'Strip a leading ?, return early on an empty string, then split on &.',
-      'Split each pair at the first = only, so a value that itself contains = survives intact.',
-      'When a key turns up again, replace the stored string with an array of both; if it is already an array, push onto it.',
+      {
+        text: 'Strip a leading question mark, return early on an empty string, then split on the ampersand.',
+        code: `const body = input.startsWith('?') ? input.slice(1) : input
+if (body === '') return output
+for (const pair of body.split('&')) {
+
+}`,
+      },
+      {
+        text: 'Split each pair at the first equals only, so a value that itself contains one survives intact.',
+        code: `const separator = pair.indexOf('=')
+const key = separator === -1 ? pair : pair.slice(0, separator)
+const value = separator === -1 ? '' : pair.slice(separator + 1)`,
+      },
+      {
+        text: 'A key seen twice becomes an array, and a key seen a third time pushes onto it.',
+        code: `if (existing === undefined) output[key] = value
+else if (Array.isArray(existing)) existing.push(value)
+else output[key] = [existing, value]`,
+      },
     ],
-    starter: `type QueryValuesAreStringsOrArrays = Expect<
-  Equal<ReturnType<typeof parseQuery>, Record<string, string | string[]>>
->`,
+    starter: '',
     solution: `function parseQuery(input: string): Record<string, string | string[]> {
   const output: Record<string, string | string[]> = {}
   const body = input.startsWith('?') ? input.slice(1) : input
@@ -296,9 +380,8 @@ test('empty list', () => expect(render({ kind: 'list', children: [] })).toBe('[]
   }
 
   return output
-}
-
-type QueryValuesAreStringsOrArrays = Expect<
+}`,
+    typeChecks: `type QueryValuesAreStringsOrArrays = Expect<
   Equal<ReturnType<typeof parseQuery>, Record<string, string | string[]>>
 >`,
     assertions: `test('parses pairs', () => expect(parseQuery('a=1&b=2')).toEqual({ a: '1', b: '2' }))
@@ -316,26 +399,36 @@ test('keeps equals signs inside the value', () => expect(parseQuery('q=a=b')).to
     prompt:
       'Build memoize(fn): return a function with the same signature that calls fn once per distinct argument list and serves the cached answer afterwards. Use the JSON of the arguments as the cache key.',
     hints: [
-      'Keep a Map from a string key to the result, and return a new function that looks in the map before calling fn.',
-      'JSON.stringify(args) turns the whole argument list into one usable key.',
-      'Ask cache.has(key) rather than testing the stored value, or a cached 0 or false gets recomputed every time.',
+      {
+        text: 'It takes a function and returns a function, so the type parameters cover the argument list and the result.',
+        code: `function memoize<A extends unknown[], R>(
+  fn: (...args: A) => R,
+): (...args: A) => R {
+  const cache = new Map<string, R>()
+  return (...args: A): R => {}
+}`,
+      },
+      {
+        text: 'One string key has to stand for the whole argument list.',
+        code: `const key = JSON.stringify(args)`,
+      },
+      {
+        text: 'Ask whether the key is present rather than testing the stored value, or a cached 0 or false is recomputed every single time.',
+        code: `if (cache.has(key)) return cache.get(key) as R`,
+      },
     ],
-    starter: `type MemoizedReturnsTheSameType = Expect<
-  Equal<ReturnType<ReturnType<typeof memoize<[number], string>>>, string>
->`,
+    starter: '',
     solution: `function memoize<A extends unknown[], R>(fn: (...args: A) => R): (...args: A) => R {
   const cache = new Map<string, R>()
   return (...args: A): R => {
     const key = JSON.stringify(args)
-    const cached = cache.get(key)
-    if (cached !== undefined || cache.has(key)) return cached as R
+    if (cache.has(key)) return cache.get(key) as R
     const value = fn(...args)
     cache.set(key, value)
     return value
   }
-}
-
-type MemoizedReturnsTheSameType = Expect<
+}`,
+    typeChecks: `type MemoizedKeepsTheReturnType = Expect<
   Equal<ReturnType<ReturnType<typeof memoize<[number], string>>>, string>
 >`,
     assertions: `test('returns the right answer', () => {
@@ -382,11 +475,28 @@ test('caches a falsy result', () => {
     prompt:
       'Build async retry(fn, attempts): call fn, and if the promise rejects, call it again until it succeeds or every attempt is used. Return the resolved value, or rethrow the error from the final attempt.',
     hints: [
-      'Loop up to attempts times and return the moment a call succeeds.',
-      'await inside the try so a rejected promise lands in catch, and store the error rather than rethrowing straight away.',
-      'After the loop finishes without returning, throw the error you saved from the last attempt.',
+      {
+        text: 'Loop up to attempts times and return the moment one call succeeds.',
+        code: `async function retry<T>(fn: () => Promise<T>, attempts: number): Promise<T> {
+  for (let attempt = 0; attempt < attempts; attempt += 1) {
+
+  }
+}`,
+      },
+      {
+        text: 'await inside the try, so a rejected promise lands in catch instead of escaping.',
+        code: `try {
+  return await fn()
+} catch (error) {
+  lastError = error
+}`,
+      },
+      {
+        text: 'Hold the error in a variable declared outside the loop, then throw it once the attempts run out.',
+        code: `let lastError: unknown`,
+      },
     ],
-    starter: `type RetryReturnsAPromise = Expect<Equal<ReturnType<typeof retry<string>>, Promise<string>>>`,
+    starter: '',
     solution: `async function retry<T>(fn: () => Promise<T>, attempts: number): Promise<T> {
   let lastError: unknown
   for (let attempt = 0; attempt < attempts; attempt += 1) {
@@ -397,9 +507,8 @@ test('caches a falsy result', () => {
     }
   }
   throw lastError
-}
-
-type RetryReturnsAPromise = Expect<Equal<ReturnType<typeof retry<string>>, Promise<string>>>`,
+}`,
+    typeChecks: `type RetryReturnsAPromise = Expect<Equal<ReturnType<typeof retry<string>>, Promise<string>>>`,
     assertions: `test('returns on the first success', async () => {
   let calls = 0
   const value = await retry(async () => {
@@ -433,15 +542,30 @@ test('gives up after the last attempt', async () => {
     id: 'lru-cache',
     title: 'Build an LRU cache',
     prompt:
-      'Build a class Lru with a capacity given to the constructor. get(key) returns the value or undefined, set(key, value) stores it. Going over capacity drops the least recently used entry, and reading an entry counts as using it.',
+      'Build a generic class Lru<K, V> taking a capacity in its constructor. get(key) returns the value or undefined, set(key, value) stores it. Going over capacity drops the least recently used entry, and reading an entry counts as using it.',
     hints: [
-      'A Map remembers insertion order, and map.keys().next().value is the oldest key in it.',
-      'To mark an entry as just used, delete it and set it again so it moves to the end of that order.',
-      'Do the delete-then-set in both get and set, then evict the oldest key whenever size goes past capacity.',
-    ],
-    starter: `declare const numbers: Lru<string, number>
+      {
+        text: 'A Map remembers the order things were inserted, so the first key it hands you is the oldest.',
+        code: `class Lru<K, V> {
+  private entries = new Map<K, V>()
 
-type GetReturnsMaybeNumber = Expect<Equal<ReturnType<typeof numbers.get>, number | undefined>>`,
+  constructor(private capacity: number) {}
+}`,
+      },
+      {
+        text: 'Deleting an entry and setting it again moves it to the end of that order, which is how you mark it as just used.',
+        code: `this.entries.delete(key)
+this.entries.set(key, value)`,
+      },
+      {
+        text: 'Once the map is one over capacity, drop the oldest key.',
+        code: `if (this.entries.size > this.capacity) {
+  const oldest = this.entries.keys().next().value as K
+  this.entries.delete(oldest)
+}`,
+      },
+    ],
+    starter: '',
     solution: `class Lru<K, V> {
   private entries = new Map<K, V>()
 
@@ -463,11 +587,9 @@ type GetReturnsMaybeNumber = Expect<Equal<ReturnType<typeof numbers.get>, number
       this.entries.delete(oldest)
     }
   }
-}
-
-declare const numbers: Lru<string, number>
-
-type GetReturnsMaybeNumber = Expect<Equal<ReturnType<typeof numbers.get>, number | undefined>>`,
+}`,
+    typeChecks: `declare const drillNumbers: Lru<string, number>
+type GetReturnsMaybeNumber = Expect<Equal<ReturnType<typeof drillNumbers.get>, number | undefined>>`,
     assertions: `test('stores and reads back', () => {
   const cache = new Lru(2)
   cache.set('a', 1)
@@ -505,26 +627,23 @@ test('overwriting a key does not grow the cache', () => {
     id: 'event-emitter',
     title: 'Build a typed event emitter',
     prompt:
-      'Build a class Emitter for an event map like Events. on(name, listener) registers, emit(name, payload) calls every listener for that name in registration order, off(name, listener) removes one. The payload type has to follow from the event name.',
+      'Build a generic class Emitter<T>, where T maps an event name to its payload type. on(name, listener) registers, emit(name, payload) calls every listener for that name in registration order, off(name, listener) removes one. The payload type has to follow from the event name.',
     hints: [
-      'Keep one plain object mapping each event name to its array of listeners.',
-      'Give the class a type parameter for the event map, and give each method its own parameter for the event name so the payload type follows from it.',
-      'Type the store as { [K in keyof T]?: ((payload: T[K]) => void)[] } and start on, off and emit with <K extends keyof T>.',
+      {
+        text: 'One object holds every event name against its array of listeners, and each entry is optional because a name may have none yet.',
+        code: `private listeners: { [K in keyof T]?: ((payload: T[K]) => void)[] } = {}`,
+      },
+      {
+        text: 'Each method needs its own type parameter for the name, so the payload type is pinned to whichever name was passed.',
+        code: `on<K extends keyof T>(name: K, listener: (payload: T[K]) => void): void {}`,
+      },
+      {
+        text: 'emit walks the listeners for that name, and has to cope with there being none.',
+        code: `for (const listener of this.listeners[name] ?? []) listener(payload)`,
+      },
     ],
-    starter: `type Events = {
-  login: { user: string }
-  logout: { reason: string }
-}
-
-declare const events: Emitter<Events>
-
-type EmitTakesTheLoginPayload = Expect<Equal<Parameters<typeof events.emit<'login'>>[1], { user: string }>>`,
-    solution: `type Events = {
-  login: { user: string }
-  logout: { reason: string }
-}
-
-class Emitter<T> {
+    starter: '',
+    solution: `class Emitter<T> {
   private listeners: { [K in keyof T]?: ((payload: T[K]) => void)[] } = {}
 
   on<K extends keyof T>(name: K, listener: (payload: T[K]) => void): void {
@@ -542,11 +661,12 @@ class Emitter<T> {
   emit<K extends keyof T>(name: K, payload: T[K]): void {
     for (const listener of this.listeners[name] ?? []) listener(payload)
   }
-}
-
-declare const events: Emitter<Events>
-
-type EmitTakesTheLoginPayload = Expect<Equal<Parameters<typeof events.emit<'login'>>[1], { user: string }>>`,
+}`,
+    typeChecks: `type DrillEvents = { login: { user: string }; logout: { reason: string } }
+declare const drillEmitter: Emitter<DrillEvents>
+type EmitTakesTheLoginPayload = Expect<
+  Equal<Parameters<typeof drillEmitter.emit<'login'>>[1], { user: string }>
+>`,
     assertions: `test('calls a listener with the payload', () => {
   const seen = []
   const emitter = new Emitter()
@@ -590,18 +710,32 @@ test('emitting with no listeners is harmless', () => {
     id: 'validator',
     title: 'Build a tiny validator',
     prompt:
-      'Build string(), number() and objectOf(shape). Each returns a Validator whose check(value, path) gives { ok: true, value } on a match, or { ok: false, path } naming the first field that failed. objectOf checks every field of the shape, and nested failures report a dotted path like profile.name.',
+      'Define Check<T> as { ok: true; value: T } | { ok: false; path: string } and Validator<T> as { check: (value: unknown, path: string) => Check<T> }. Then build string(), number() and objectOf(shape), each returning a Validator. objectOf checks every field of the shape, stops at the first failure, and reports nested failures with a dotted path like profile.name.',
     hints: [
-      'string() and number() are small: test typeof and return one of the two result shapes.',
-      'objectOf walks the shape’s own keys, running each field’s validator against the matching field of the value, and stops at the first failure.',
-      'Type it as objectOf<T>(shape: { [K in keyof T]: Validator<T[K]> }): Validator<T>, and build each child path as parent plus dot plus key.',
+      {
+        text: 'A validator is just an object with a check method, and check returns one of two shapes.',
+        code: `type Check<T> = { ok: true; value: T } | { ok: false; path: string }
+type Validator<T> = { check: (value: unknown, path: string) => Check<T> }`,
+      },
+      {
+        text: 'string() and number() are tiny: a typeof test and one of the two results.',
+        code: `function string(): Validator<string> {
+  return {
+    check: (value, path) =>
+      typeof value === 'string' ? { ok: true, value } : { ok: false, path },
+  }
+}`,
+      },
+      {
+        text: 'objectOf takes an object of validators and works out its own output type from them, then walks the keys building a dotted path.',
+        code: `function objectOf<T>(
+  shape: { [K in keyof T]: Validator<T[K]> },
+): Validator<T> {}
+
+const childPath = path ? \`\${path}.\${String(key)}\` : String(key)`,
+      },
     ],
-    starter: `type Check<T> = { ok: true; value: T } | { ok: false; path: string }
-type Validator<T> = { check: (value: unknown, path: string) => Check<T> }
-
-declare const user: ReturnType<typeof objectOf<{ name: string }>>
-
-type ObjectOfKeepsTheShape = Expect<Equal<ReturnType<typeof user.check>, Check<{ name: string }>>>`,
+    starter: '',
     solution: `type Check<T> = { ok: true; value: T } | { ok: false; path: string }
 type Validator<T> = { check: (value: unknown, path: string) => Check<T> }
 
@@ -632,11 +766,9 @@ function objectOf<T>(shape: { [K in keyof T]: Validator<T[K]> }): Validator<T> {
       return { ok: true, value: output }
     },
   }
-}
-
-declare const user: ReturnType<typeof objectOf<{ name: string }>>
-
-type ObjectOfKeepsTheShape = Expect<Equal<ReturnType<typeof user.check>, Check<{ name: string }>>>`,
+}`,
+    typeChecks: `declare const drillUser: ReturnType<typeof objectOf<{ name: string }>>
+type ObjectOfKeepsTheShape = Expect<Equal<ReturnType<typeof drillUser.check>, Check<{ name: string }>>>`,
     assertions: `test('a string passes', () => expect(string().check('hi', 'root')).toEqual({ ok: true, value: 'hi' }))
 test('a wrong string reports its path', () => expect(string().check(5, 'root')).toEqual({ ok: false, path: 'root' }))
 test('a number passes', () => expect(number().check(7, 'root')).toEqual({ ok: true, value: 7 }))

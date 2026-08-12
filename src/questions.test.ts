@@ -44,18 +44,28 @@ describe('question bank', () => {
     expect(new Set(ids).size).toBe(ids.length)
   })
 
-  it('gives every question a full hint ladder', () => {
+  it('gives every question a full hint ladder with example syntax', () => {
     for (const question of QUESTIONS) {
       expect(question.hints.length, question.id).toBeGreaterThanOrEqual(3)
-      expect(question.hints.some((hint) => hint.trim() === ''), question.id).toBe(false)
+      for (const hint of question.hints) {
+        expect(hint.text.trim(), question.id).not.toBe('')
+        expect(hint.code.trim(), question.id).not.toBe('')
+      }
     }
   })
 
-  it('never lets the final hint be the solution', () => {
+  it('never lets a hint hand over the whole solution', () => {
     for (const question of QUESTIONS) {
-      const lastHint = question.hints[question.hints.length - 1]
-      expect(lastHint.includes('\n'), question.id).toBe(false)
-      expect(lastHint.length, question.id).toBeLessThan(question.solution.length)
+      for (const hint of question.hints) {
+        expect(hint.code.trim(), question.id).not.toBe(question.solution.trim())
+        expect(hint.code.length, question.id).toBeLessThan(question.solution.length)
+      }
+    }
+  })
+
+  it('starts every question from a genuinely empty editor', () => {
+    for (const question of QUESTIONS) {
+      expect(question.starter, question.id).toBe('')
     }
   })
 
@@ -75,6 +85,16 @@ describe('question bank', () => {
 
     it('solution passes the type gate', () => {
       expect(typeErrors(question.solution), `${id} solution must type check`).toEqual([])
+    })
+
+    it('solution satisfies the hidden signature contract', () => {
+      const withContract = `${question.solution}\n${question.typeChecks}`
+      expect(typeErrors(withContract), `${id} solution must satisfy its own contract`).toEqual([])
+    })
+
+    it('contract rejects the empty editor', () => {
+      const withContract = `${question.starter}\n${question.typeChecks}`
+      expect(typeErrors(withContract), `${id} contract must not pass on an empty file`).not.toEqual([])
     })
 
     it('solution passes every assertion', async () => {

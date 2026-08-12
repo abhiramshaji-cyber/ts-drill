@@ -1,7 +1,7 @@
 import { Suspense, lazy, useCallback, useEffect, useRef, useState } from 'react'
 import type * as monaco from 'monaco-editor/editor/editor.api'
 import { QUESTIONS } from './questions'
-import { checkTypes, emitJs, type TypeIssue } from './ts-service'
+import { checkContract, checkTypes, emitJs, type TypeIssue } from './ts-service'
 import { runSandboxed } from './runner'
 import type { AssertionResult } from './harness'
 import { loadProgress, saveProgress, type Progress } from './progress'
@@ -19,6 +19,7 @@ export default function App() {
   const [index, setIndex] = useState(() => firstUnsolved(loadProgress()))
   const [issues, setIssues] = useState<TypeIssue[] | null>(null)
   const [results, setResults] = useState<AssertionResult[] | null>(null)
+  const [contract, setContract] = useState<string[] | null>(null)
   const [fault, setFault] = useState<string | null>(null)
   const [running, setRunning] = useState(false)
   const [usedSolution, setUsedSolution] = useState(false)
@@ -34,6 +35,7 @@ export default function App() {
   useEffect(() => {
     setIssues(null)
     setResults(null)
+    setContract(null)
     setFault(null)
     setUsedSolution(false)
   }, [question.id])
@@ -51,6 +53,7 @@ export default function App() {
   const onContentChange = useCallback(() => {
     noteActivity()
     setResults(null)
+    setContract(null)
     setFault(null)
     scheduleCheck()
   }, [noteActivity, scheduleCheck])
@@ -78,6 +81,8 @@ export default function App() {
         setResults(null)
         return
       }
+      const contractIssues = await checkContract(model, question.typeChecks)
+      setContract(contractIssues)
       const outcome = await runSandboxed(await emitJs(model), question.assertions)
       if (outcome.kind === 'timeout') {
         setResults(null)
@@ -90,11 +95,11 @@ export default function App() {
         return
       }
       setResults(outcome.results)
-      if (outcome.results.every((result) => result.passed)) markSolved()
+      if (contractIssues.length === 0 && outcome.results.every((result) => result.passed)) markSolved()
     } finally {
       setRunning(false)
     }
-  }, [markSolved, question.assertions, running])
+  }, [markSolved, question.assertions, question.typeChecks, running])
 
   const goNext = useCallback(() => setIndex((current) => (current + 1) % QUESTIONS.length), [])
   const goPrev = useCallback(() => setIndex((current) => (current - 1 + QUESTIONS.length) % QUESTIONS.length), [])
@@ -194,6 +199,21 @@ export default function App() {
             )}
           </section>
 
+          {contract !== null && contract.length > 0 && (
+            <section>
+              <h2>
+                Signature
+                <i className="dot bad" />
+              </h2>
+              <p className="muted">It runs, but the types are not what the task asked for.</p>
+              <ul className="issues">
+                {contract.map((message) => (
+                  <li key={message}>{message}</li>
+                ))}
+              </ul>
+            </section>
+          )}
+
           <section>
             <h2>
               Tests
@@ -223,7 +243,10 @@ export default function App() {
             ) : (
               <ol>
                 {question.hints.slice(0, revealed).map((hint) => (
-                  <li key={hint}>{hint}</li>
+                  <li key={hint.text}>
+                    {hint.text}
+                    <pre>{hint.code}</pre>
+                  </li>
                 ))}
               </ol>
             )}
