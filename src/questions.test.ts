@@ -9,6 +9,7 @@ const options: ts.CompilerOptions = {
   ...SHARED_COMPILER_OPTIONS,
   target: ts.ScriptTarget.ES2020,
   module: ts.ModuleKind.None,
+  lib: ['lib.es2020.d.ts'],
 }
 
 function typeErrors(source: string): string[] {
@@ -58,9 +59,18 @@ describe('question bank', () => {
     }
   })
 
+  it('gives every question runtime assertions', () => {
+    for (const question of QUESTIONS) {
+      expect(question.assertions.trim(), question.id).not.toBe('')
+    }
+  })
+
   describe.each(QUESTIONS.map((q) => [q.id, q] as const))('%s', (id, question) => {
-    it('starter fails the type gate', () => {
-      expect(typeErrors(question.starter), `${id} starter should not type check`).not.toEqual([])
+    it('starter does not already pass', async () => {
+      if (typeErrors(question.starter).length > 0) return
+      const outcome = await runHarness(toJs(question.starter), question.assertions)
+      const alreadyPasses = outcome.kind === 'results' && outcome.results.every((r) => r.passed)
+      expect(alreadyPasses, `${id} starter must not already pass both gates`).toBe(false)
     })
 
     it('solution passes the type gate', () => {
