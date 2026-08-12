@@ -49,6 +49,20 @@ export function checkTypes(model: monaco.editor.ITextModel): Promise<TypeIssue[]
   })
 }
 
+export async function checkContract(model: monaco.editor.ITextModel, appendix: string): Promise<string[]> {
+  if (appendix.trim() === '') return []
+  const api = await import('monaco-editor/editor/editor.api')
+  const uri = api.Uri.parse('file:///drill-contract.ts')
+  api.editor.getModel(uri)?.dispose()
+  const scratch = api.editor.createModel(`${model.getValue()}\n${appendix}`, 'typescript', uri)
+  try {
+    const issues = await checkTypes(scratch)
+    return [...new Set(issues.map((issue) => issue.message))]
+  } finally {
+    scratch.dispose()
+  }
+}
+
 export function emitJs(model: monaco.editor.ITextModel): Promise<string> {
   return whileUnchanged(model, async () => {
     const client = await clientFor(model)

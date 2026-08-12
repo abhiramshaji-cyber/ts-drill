@@ -287,6 +287,20 @@ kbd {
   padding-left: 22px;
 }
 
+.hints pre {
+  margin: 8px 0 0;
+  padding: 10px 12px;
+  background: #0a0c10;
+  border: 1px solid var(--edge);
+  border-radius: 6px;
+  overflow-x: auto;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 12px;
+  line-height: 1.55;
+  color: #c8d3e0;
+  white-space: pre;
+}
+
 .hints li::before {
   content: counter(hint);
   position: absolute;
