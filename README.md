@@ -1,10 +1,12 @@
 # ts drill
 
-A TypeScript practice pad with a real IDE inside it. Fourteen exercises, genuine type aware autocomplete, and hints that surface on their own when you stall.
+A TypeScript practice pad with a real IDE inside it. Twelve things to build from scratch, genuine type aware autocomplete, and hints that surface on their own when you stall.
 
 ## Why
 
 Reaching for AI on every line erodes the muscle memory. This is a place to write TypeScript by hand and get honest feedback in milliseconds.
+
+Every task gives you a spec and an almost empty file. You write the whole thing: `chunk`, `groupBy`, `memoize`, `retry`, an LRU cache, a typed event emitter, a small validator. Nothing is a fill in the blank, and nothing asks you to patch someone else's code.
 
 ## How it works
 
@@ -17,7 +19,7 @@ An answer counts as correct when both gates pass:
 
 Assertions execute in a disposable web worker with a hard 2 second timeout, so an accidental infinite loop is terminated rather than freezing the tab.
 
-Some questions are graded purely on types. Those carry `Expect<Equal<...>>` lines in the buffer, which fail to compile until the type is right.
+Where the shape of the type is part of the exercise, the starter carries `Expect<Equal<...>>` lines that stay red until your signature is right. A working implementation with a lazy signature does not count as done.
 
 ## Hints
 
@@ -38,4 +40,4 @@ bun run build  # typecheck and production build
 
 ## Adding a question
 
-Append to `src/questions.ts`. Each entry needs a starter that fails, a solution that passes, at least three hints, and either runtime assertions or `Expect` lines. The test suite enforces all of that: it type checks every starter and solution with the real compiler and runs every solution against its assertions, so a broken exercise fails CI rather than reaching you mid drill.
+Append to `src/questions.ts`. Each entry needs a starter that does not already pass, a solution that does, at least three hints, and runtime assertions. The test suite enforces all of that with the real compiler: it proves every starter fails at least one gate and every solution clears both, so a broken exercise surfaces in `bun test` rather than mid drill.

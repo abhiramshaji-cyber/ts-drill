@@ -200,12 +200,7 @@ export default function App() {
               {graded && <i className={allPassed ? 'dot ok' : 'dot bad'} />}
             </h2>
             {fault && <p className="fault">{fault}</p>}
-            {!fault && question.assertions === '' && (
-              <p className="muted">Graded by the Expect lines in the editor.</p>
-            )}
-            {!fault && question.assertions !== '' && !graded && (
-              <p className="muted">Run to check behaviour.</p>
-            )}
+            {!fault && !graded && <p className="muted">Run to check it works.</p>}
             {!fault && graded && (
               <ul className="results">
                 {results.map((result) => (
