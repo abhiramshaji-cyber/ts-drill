@@ -33,11 +33,18 @@ export function checkTypes(model: monaco.editor.ITextModel): Promise<TypeIssue[]
       client.getSyntacticDiagnostics(uri),
       client.getSemanticDiagnostics(uri),
     ])
+    const seen = new Set<string>()
     return [...syntactic, ...semantic]
       .map((diagnostic) => ({
         line: typeof diagnostic.start === 'number' ? model.getPositionAt(diagnostic.start).lineNumber : 1,
         message: flatten(diagnostic.messageText as string | MessageChain),
       }))
+      .filter((issue) => {
+        const key = `${issue.line}:${issue.message}`
+        if (seen.has(key)) return false
+        seen.add(key)
+        return true
+      })
       .sort((a, b) => a.line - b.line)
   })
 }
