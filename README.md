@@ -43,3 +43,11 @@ bun run build  # typecheck and production build
 ## Adding a question
 
 Append to `src/questions.ts`. Each entry needs a starter that does not already pass, a solution that does, at least three hints, and runtime assertions. The test suite enforces all of that with the real compiler: it proves every starter fails at least one gate and every solution clears both, so a broken exercise surfaces in `bun test` rather than mid drill.
+
+## Contributing
+
+Issues and pull requests are welcome. New drill tasks are the most welcome contribution. See [CONTRIBUTING.md](CONTRIBUTING.md).
+
+## Licence
+
+MIT. See [LICENSE](LICENSE).
